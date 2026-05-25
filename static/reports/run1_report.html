@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>DevSecOps Unified Report — log-api</title>
+  <style>
+    body { font-family: -apple-system, system-ui, sans-serif; max-width: 1100px; margin: 2em auto; padding: 0 1em; color: #2c3e50; }
+    h1 { margin-bottom: 0.2em; }
+    .summary { background: #ecf0f1; padding: 1em 1.4em; border-radius: 6px; margin: 1em 0 2em; }
+    .summary .total { font-size: 1.6em; font-weight: 600; }
+    .chip { display: inline-block; color: white; padding: 2px 10px; border-radius: 12px; font-size: 0.85em; margin-right: 6px; }
+    details { margin: 1em 0; border: 1px solid #ddd; border-radius: 6px; }
+    summary { padding: 0.8em 1em; cursor: pointer; background: #f7f9fa; font-weight: 600; }
+    summary:hover { background: #eef2f4; }
+    .tool-status { font-weight: 400; color: #7f8c8d; margin-left: 0.5em; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 0.5em 0.8em; border-bottom: 1px solid #eee; text-align: left; vertical-align: top; }
+    th { background: #fafafa; font-size: 0.9em; }
+    code { background: #f4f6f7; padding: 1px 5px; border-radius: 3px; font-size: 0.9em; }
+    .empty { padding: 1em; color: #7f8c8d; font-style: italic; }
+    .desc { font-size: 0.85em; color: #555; max-width: 480px; }
+  </style>
+</head>
+<body>
+  <h1>DevSecOps Unified Report</h1>
+  <p style="color:#7f8c8d">log-api</p>
+
+  <div class="summary">
+    <div class="total">17 finding-ов суммарно</div>
+    <div style="margin-top: 0.6em"><span class="chip" style="background:#c0392b">high: 4</span> <span class="chip" style="background:#d68910">medium: 8</span> <span class="chip" style="background:#2980b9">low: 2</span> <span class="chip" style="background:#7f8c8d">info: 3</span></div>
+  </div>
+
+  <details><summary>semgrep (2) <span class="chip" style="background:#d68910">medium: 2</span></summary><table><thead><tr><th>Severity</th><th>Rule</th><th>Title</th><th>Location</th></tr></thead><tbody><tr><td><span class="chip" style="background:#d68910">medium</span></td><td><code>go.lang.security.audit.crypto.missing-ssl-minversion.missing-ssl-minversion</code></td><td>`MinVersion` is missing from this TLS configuration.  By default, as of Go 1.22, TLS 1.2 is currently used as the minimum. General purpose web applications should default to TLS 1.3 with all other pro<div class="desc">`MinVersion` is missing from this TLS configuration.  By default, as of Go 1.22, TLS 1.2 is currently used as the minimum. General purpose web applications should default to TLS 1.3 with all other protocols disabled.  Only where it is known that a web server must support legacy clients with unsuppor</div></td><td><code>internal/opensearch/client.go:34</code></td></tr><tr><td><span class="chip" style="background:#d68910">medium</span></td><td><code>go.lang.security.audit.net.use-tls.use-tls</code></td><td>Found an HTTP server without TLS. Use &#x27;http.ListenAndServeTLS&#x27; instead. See https://golang.org/pkg/net/http/#ListenAndServeTLS for more information.<div class="desc">Found an HTTP server without TLS. Use &#x27;http.ListenAndServeTLS&#x27; instead. See https://golang.org/pkg/net/http/#ListenAndServeTLS for more information.</div></td><td><code>cmd/server/main.go:29</code></td></tr></tbody></table></details><details><summary>gosec (4) <span class="chip" style="background:#c0392b">high: 1</span> <span class="chip" style="background:#d68910">medium: 3</span></summary><table><thead><tr><th>Severity</th><th>Rule</th><th>Title</th><th>Location</th></tr></thead><tbody><tr><td><span class="chip" style="background:#c0392b">high</span></td><td><code>G702</code></td><td>Command injection via taint analysis<div class="desc">Command injection via taint analysis
+
+Code:
+11: 	cmd := r.URL.Query().Get(&quot;cmd&quot;)
+12: 	out, _ := exec.Command(&quot;sh&quot;, &quot;-c&quot;, &quot;echo &quot;+cmd).Output()
+13: 	_, _ = w.Write(out)
+</div></td><td><code>/home/runner/work/devsecops-pipeline/devsecops-pipeline/internal/handler/vuln.go:12</code></td></tr><tr><td><span class="chip" style="background:#d68910">medium</span></td><td><code>G114</code></td><td>Use of net/http serve function that has no support for setting timeouts<div class="desc">Use of net/http serve function that has no support for setting timeouts
+
+Code:
+28: 	fmt.Printf(&quot;server started on %s\n&quot;, addr)
+29: 	log.Fatal(http.ListenAndServe(addr, router))
+30: }
+</div></td><td><code>/home/runner/work/devsecops-pipeline/devsecops-pipeline/cmd/server/main.go:29</code></td></tr><tr><td><span class="chip" style="background:#d68910">medium</span></td><td><code>G204</code></td><td>Subprocess launched with a potential tainted input or cmd arguments<div class="desc">Subprocess launched with a potential tainted input or cmd arguments
+
+Code:
+11: 	cmd := r.URL.Query().Get(&quot;cmd&quot;)
+12: 	out, _ := exec.Command(&quot;sh&quot;, &quot;-c&quot;, &quot;echo &quot;+cmd).Output()
+13: 	_, _ = w.Write(out)
+</div></td><td><code>/home/runner/work/devsecops-pipeline/devsecops-pipeline/internal/handler/vuln.go:12</code></td></tr><tr><td><span class="chip" style="background:#d68910">medium</span></td><td><code>G705</code></td><td>XSS via taint analysis<div class="desc">XSS via taint analysis
+
+Code:
+12: 	out, _ := exec.Command(&quot;sh&quot;, &quot;-c&quot;, &quot;echo &quot;+cmd).Output()
+13: 	_, _ = w.Write(out)
+14: }
+</div></td><td><code>/home/runner/work/devsecops-pipeline/devsecops-pipeline/internal/handler/vuln.go:13</code></td></tr></tbody></table></details><details><summary>checkov (3) <span class="chip" style="background:#d68910">medium: 3</span></summary><table><thead><tr><th>Severity</th><th>Rule</th><th>Title</th><th>Location</th></tr></thead><tbody><tr><td><span class="chip" style="background:#d68910">medium</span></td><td><code>CKV2_GHA_1</code></td><td>Ensure top-level permissions are not set to write-all<div class="desc">Ensure top-level permissions are not set to write-all</div></td><td><code>/.github/workflows/devsecops.yml</code></td></tr><tr><td><span class="chip" style="background:#d68910">medium</span></td><td><code>CKV_DOCKER_2</code></td><td>Ensure that HEALTHCHECK instructions have been added to container images<div class="desc">https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-that-healthcheck-instructions-have-been-added-to-container-images</div></td><td><code>/Dockerfile:1</code></td></tr><tr><td><span class="chip" style="background:#d68910">medium</span></td><td><code>CKV_DOCKER_7</code></td><td>Ensure the base image uses a non latest version tag<div class="desc">https://docs.prismacloud.io/en/enterprise-edition/policy-reference/docker-policies/docker-policy-index/ensure-the-base-image-uses-a-non-latest-version-tag</div></td><td><code>/Dockerfile:12</code></td></tr></tbody></table></details><details><summary>govulncheck (0) </summary><div class="empty">finding-ов нет — все проверки пройдены.</div></details><details><summary>trivy (0) </summary><div class="empty">finding-ов нет — все проверки пройдены.</div></details><details><summary>zap (8) <span class="chip" style="background:#c0392b">high: 3</span> <span class="chip" style="background:#2980b9">low: 2</span> <span class="chip" style="background:#7f8c8d">info: 3</span></summary><table><thead><tr><th>Severity</th><th>Rule</th><th>Title</th><th>Location</th></tr></thead><tbody><tr><td><span class="chip" style="background:#c0392b">high</span></td><td><code>10048</code></td><td>Remote Code Execution - Shell Shock<div class="desc">&lt;p&gt;The server is running a version of the Bash shell that allows remote attackers to execute arbitrary code.&lt;/p&gt;</div></td><td><code>http://api:9100/vuln?cmd=%28%29+%7B+%3A%3B%7D%3B+%2Fbin%2Fsleep+15</code></td></tr><tr><td><span class="chip" style="background:#c0392b">high</span></td><td><code>90020</code></td><td>Remote OS Command Injection<div class="desc">&lt;p&gt;Attack technique used for unauthorized execution of operating system commands. This attack is possible when an application accepts untrusted input to build operating system commands in an insecure manner involving improper data sanitization, and/or improper calling of external programs.&lt;/p&gt;</div></td><td><code>http://api:9100/vuln?cmd=hello%26cat+%2Fetc%2Fpasswd%26</code></td></tr><tr><td><span class="chip" style="background:#c0392b">high</span></td><td><code>90037</code></td><td>Remote OS Command Injection (Time Based)<div class="desc">&lt;p&gt;Attack technique used for unauthorized execution of operating system commands. This attack is possible when an application accepts untrusted input to build operating system commands in an insecure manner involving improper data sanitization, and/or improper calling of external programs.&lt;/p&gt;</div></td><td><code>http://api:9100/vuln?cmd=hello%26sleep+1.0%26</code></td></tr><tr><td><span class="chip" style="background:#2980b9">low</span></td><td><code>100000</code></td><td>A Server Error response code was returned by the server<div class="desc">&lt;p&gt;A response code of 500 was returned by the server.&lt;/p&gt;&lt;p&gt;This may indicate that the application is failing to handle unexpected input correctly.&lt;/p&gt;&lt;p&gt;Raised by the &#x27;Alert on HTTP Response Code Error&#x27; script&lt;/p&gt;</div></td><td><code>http://api:9100/log</code></td></tr><tr><td><span class="chip" style="background:#2980b9">low</span></td><td><code>90004</code></td><td>Cross-Origin-Resource-Policy Header Missing or Invalid<div class="desc">&lt;p&gt;Cross-Origin-Resource-Policy header is an opt-in header designed to counter side-channels attacks like Spectre. Resource should be specifically set as shareable amongst different origins.&lt;/p&gt;</div></td><td><code>http://api:9100/_ping</code></td></tr><tr><td><span class="chip" style="background:#7f8c8d">info</span></td><td><code>100000</code></td><td>A Client Error response code was returned by the server<div class="desc">&lt;p&gt;A response code of 404 was returned by the server.&lt;/p&gt;&lt;p&gt;This may indicate that the application is failing to handle unexpected input correctly.&lt;/p&gt;&lt;p&gt;Raised by the &#x27;Alert on HTTP Response Code Error&#x27; script&lt;/p&gt;</div></td><td><code>http://api:9100</code></td></tr><tr><td><span class="chip" style="background:#7f8c8d">info</span></td><td><code>10049</code></td><td>Non-Storable Content<div class="desc">&lt;p&gt;The response contents are not storable by caching components such as proxy servers. If the response does not contain sensitive, personal or user-specific information, it may benefit from being stored and cached, to improve performance.&lt;/p&gt;</div></td><td><code>http://api:9100/_ping</code></td></tr><tr><td><span class="chip" style="background:#7f8c8d">info</span></td><td><code>10104</code></td><td>User Agent Fuzzer<div class="desc">&lt;p&gt;Check for differences in response based on fuzzed User Agent (eg. mobile sites, access as a Search Engine Crawler). Compares the response statuscode and the hashcode of the response body with the original response.&lt;/p&gt;</div></td><td><code>http://api:9100/log</code></td></tr></tbody></table></details>
+</body>
+</html>

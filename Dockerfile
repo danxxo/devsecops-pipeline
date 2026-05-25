@@ -9,7 +9,7 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -o server ./cmd/server
 
-FROM alpine:latest
+FROM alpine:3.23
 
 WORKDIR /app
 

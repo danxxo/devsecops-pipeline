@@ -297,3 +297,19 @@ docker run --rm \
 | `python3 pipeline/gate.py` | Прогнать quality-gate по `policy.yml` |
 
 JSON-отчёты складываются в `pipeline/_reports/` (gitignored).
+
+## 10. Запуски по шагам
+Все скрины и сохраненные репорты в `static/img/` и `static/reports/`
+
+1. пулл реквест ветки demo->master
+
+Сработка quality-gate
+![run1_quality_gate](./static/img/run1_quality_gate.png)
+
+Отчет
+![run1_report](./static/img/run1_report.png)
+
+2. коммит -> opened pr demo->master. Фикс latest тега Checkov
+
+CKV_DOCKER_7 пропал из сканов Checkov
+![run2_report](./static/img/run2_report.png)
