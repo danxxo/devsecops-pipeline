@@ -300,6 +300,10 @@ jobs:
         if: github.event_name == 'push'
         run: python3 pipeline/gate.py --update-baseline
 
+      - name: Print baseline
+        if: github.event_name == 'push'
+        run: cat pipeline/_baseline/baseline.json
+
       - name: Save baseline
         if: github.event_name == 'push'
         uses: actions/cache/save@v4
