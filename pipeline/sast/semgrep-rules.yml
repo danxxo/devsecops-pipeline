@@ -1,0 +1,36 @@
+rules:
+  - id: go-sql-injection-fmt
+    languages: [go]
+    severity: ERROR
+    message: >-
+      SQL-запрос собирается через fmt.Sprintf/конкатенацию строк.
+      Используй параметризованный запрос: db.Query("... WHERE x = ?", val).
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $DB.Query(fmt.Sprintf(...), ...)
+          - pattern: |
+              $DB.QueryContext($CTX, fmt.Sprintf(...), ...)
+          - pattern: |
+              $DB.Exec(fmt.Sprintf(...), ...)
+          - pattern: |
+              $DB.ExecContext($CTX, fmt.Sprintf(...), ...)
+          - pattern: |
+              $DB.QueryRow(fmt.Sprintf(...), ...)
+          - pattern: |
+              $DB.QueryRowContext($CTX, fmt.Sprintf(...), ...)
+
+  - id: go-unsafe-exec-with-user-input
+    languages: [go]
+    severity: ERROR
+    message: >-
+      exec.Command с конкатенацией строк/Sprintf — потенциальная command injection.
+      Передавай аргументы отдельными параметрами: exec.Command("sh", "-c", arg).
+    patterns:
+      - pattern-either:
+          - pattern: exec.Command(fmt.Sprintf(...), ...)
+          - pattern: exec.CommandContext($CTX, fmt.Sprintf(...), ...)
+          - pattern: |
+              exec.Command($CMD + $X, ...)
+          - pattern: |
+              exec.CommandContext($CTX, $CMD + $X, ...)

@@ -1,0 +1,13 @@
+# Политика quality-gate. ЕДИНСТВЕННОЕ место, где описано «что роняет сборку».
+# Решение pass/fail принимает pipeline/gate.py по этому файлу.
+#
+# Для каждого сканера — минимальная severity, с которой НОВАЯ находка роняет гейт.
+# Шкала: critical > high > medium > low > info.  never = только в отчёт, не блокирует.
+
+tools:
+  semgrep:     high
+  gosec:       high
+  govulncheck: high
+  trivy:       critical
+  zap:         high
+  checkov:     never

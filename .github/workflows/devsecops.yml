@@ -1,0 +1,308 @@
+name: DevSecOps
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]   # на merge в master пересобираем baseline (см. job gate)
+  workflow_dispatch:
+
+jobs:
+  sast:
+    name: "SAST — Semgrep + gosec + Checkov"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install semgrep
+        run: pip install semgrep==1.95.0
+
+      - name: Run semgrep
+        # Сканер только собирает отчёт. Решение pass/fail — в job gate по policy.yml.
+        run: |
+          semgrep \
+            --config p/golang \
+            --config p/secrets \
+            --config pipeline/sast/semgrep-rules.yml \
+            --config pipeline/sast/external/dgryski/ \
+            --json \
+            --metrics=off \
+            --output semgrep.json \
+            cmd internal
+
+      - name: Upload semgrep report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-report
+          path: semgrep.json
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Cache gosec binary
+        id: gosec-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/go/bin
+          key: gosec-${{ runner.os }}-v2.26.1
+
+      - name: Install gosec
+        if: steps.gosec-cache.outputs.cache-hit != 'true'
+        run: go install github.com/securego/gosec/v2/cmd/gosec@v2.26.1
+
+      - name: Run gosec
+        # -no-fail: gosec не роняет шаг. Severity не фильтруем — пусть gate решает.
+        run: |
+          gosec \
+            -fmt=json -out=gosec.json \
+            -no-fail \
+            ./cmd/... ./internal/...
+
+      - name: Upload gosec report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gosec-report
+          path: gosec.json
+
+      - name: Install checkov
+        run: pip install checkov
+
+      - name: Run checkov
+        run: |
+          checkov \
+            -d . \
+            --framework dockerfile,github_actions \
+            --quiet \
+            -o json --output-file-path . || true
+          mv results_json.json checkov.json || true
+
+      - name: Upload checkov report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkov-report
+          path: checkov.json
+
+  sca:
+    name: "SCA — govulncheck"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Cache govulncheck binary
+        id: govuln-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/go/bin
+          key: govulncheck-${{ runner.os }}-v1.3.0
+
+      - name: Install govulncheck
+        if: steps.govuln-cache.outputs.cache-hit != 'true'
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.3.0
+
+      - name: Run govulncheck
+        run: |
+          govulncheck -format json ./... > govulncheck.json
+
+      - name: Upload govulncheck report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: govulncheck-report
+          path: govulncheck.json
+
+  build-and-scan:
+    name: "Build + Trivy Image Scan"
+    runs-on: ubuntu-latest
+    needs: [sast, sca]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Образ собирается локально на раннере (push: false, load: true) — без
+      # внешнего registry. Trivy сканирует его прямо из локального docker-демона,
+      # а для DAST-стадии образ передаётся следующим job-ом через artifact (docker save).
+      - name: Build image (local, no registry)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          load: true
+          tags: log-api:devsecops-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy
+        # Только отчёт, без exit-code. Severity не фильтруем — gate решает по policy.yml.
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: log-api:devsecops-${{ github.sha }}
+          format: json
+          output: trivy.json
+          scanners: vuln,secret,misconfig
+          severity: CRITICAL,HIGH,MEDIUM,LOW
+
+      - name: Upload trivy report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: trivy.json
+
+      # Сохраняем собранный образ в tar и отдаём DAST-стадии. Имя artifact
+      # не оканчивается на -report, поэтому report-job его не подхватит.
+      - name: Save image for DAST
+        if: always()
+        run: docker save log-api:devsecops-${{ github.sha }} -o image.tar
+
+      - name: Upload image artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: image.tar
+
+  dast:
+    name: "DAST — OWASP ZAP"
+    runs-on: ubuntu-latest
+    needs: build-and-scan
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download built image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+
+      - name: Load image and retag for compose
+        run: |
+          docker load -i image.tar
+          docker tag log-api:devsecops-${{ github.sha }} log-api:devsecops-local
+
+      - name: Bring up devsecops stack
+        working-directory: pipeline/dast
+        run: docker compose -f docker-compose.devsecops.yml up -d
+
+      - name: Wait for api ready
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:9100/_ping >/dev/null; then
+              echo "api ready"; exit 0
+            fi
+            sleep 2
+          done
+          echo "timeout waiting for api"
+          docker compose -f pipeline/dast/docker-compose.devsecops.yml logs api | tail -50
+          exit 1
+
+      - name: Run ZAP API scan (active)
+        timeout-minutes: 30
+        run: |
+          mkdir -p zap_wrk
+          chmod 777 zap_wrk
+          cp pipeline/dast/zap-baseline.conf zap_wrk/
+          cp pipeline/dast/openapi.yml zap_wrk/
+          set +e
+          docker run --rm \
+            --network=devsecops_default \
+            -v "$PWD/zap_wrk:/zap/wrk:rw" \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-api-scan.py -t /zap/wrk/openapi.yml -f openapi -J zap.json -c zap-baseline.conf
+          set -e
+
+          mv zap_wrk/zap.json . || true
+
+      - name: Tear down stack
+        if: always()
+        working-directory: pipeline/dast
+        run: docker compose -f docker-compose.devsecops.yml down -v
+
+      - name: Upload zap report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: zap.json
+
+  # Единая точка принятия решения pass/fail: собирает все отчёты, строит HTML
+  # и прогоняет quality-gate по pipeline/policy.yml. Никаких exit/--error в
+  # шагах сканеров выше — вся логика гейта здесь и в policy.yml.
+  gate:
+    name: "Security Gate + Report"
+    runs-on: ubuntu-latest
+    needs: [sast, sca, build-and-scan, dast]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install gate deps
+        run: pip install pyyaml
+
+      # Все *-report артефакты предыдущих jobs скачиваются плоско в pipeline/_reports/.
+      # У каждого scanner JSON уникальное имя (semgrep.json, gosec.json, …),
+      # поэтому merge-multiple склеивает без коллизий.
+      # pattern: '*-report' исключает artifact docker-image (image.tar).
+      - name: Download all reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*-report'
+          path: pipeline/_reports
+          merge-multiple: true
+
+      - name: Build unified HTML
+        run: python3 pipeline/merge_reports.py
+
+      - name: Upload unified report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unified-report
+          path: pipeline/_reports/report.html
+
+      # Baseline (снимок известных находок master) лежит в Actions cache.
+      # restore-keys по префиксу подтянет самый свежий снимок с master.
+      - name: Restore baseline
+        uses: actions/cache/restore@v4
+        with:
+          path: pipeline/_baseline
+          key: security-baseline-${{ github.sha }}
+          restore-keys: |
+            security-baseline-
+
+      # PR / ручной запуск: гейт против baseline. exit 1 при новых блокерах.
+      - name: Quality gate
+        if: github.event_name != 'push'
+        run: python3 pipeline/gate.py
+
+      # push в master: код уже влит — пересобираем baseline и кладём в cache,
+      # фиксируя новый принятый уровень. Гейт здесь не блокирует.
+      - name: Refresh baseline (master)
+        if: github.event_name == 'push'
+        run: python3 pipeline/gate.py --update-baseline
+
+      - name: Save baseline
+        if: github.event_name == 'push'
+        uses: actions/cache/save@v4
+        with:
+          path: pipeline/_baseline
+          key: security-baseline-${{ github.sha }}

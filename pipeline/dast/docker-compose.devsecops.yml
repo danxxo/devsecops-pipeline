@@ -1,0 +1,30 @@
+name: devsecops
+
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.16.0
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=false
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=Admin123!Secure
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -ksfu admin:Admin123!Secure https://localhost:9200/_cluster/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+
+  api:
+    image: log-api:devsecops-local
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    environment:
+      - PORT=9100
+      - OPENSEARCH_ADDR=https://opensearch:9200
+      - OPENSEARCH_USERNAME=admin
+      - OPENSEARCH_PASSWORD=Admin123!Secure
+      - OPENSEARCH_INDEX=logs
+    ports:
+      - "9100:9100"

@@ -1,0 +1,11 @@
+{
+  "properties": {
+    "timestamp":   { "type": "date" },
+    "received_at": { "type": "date" },
+    "level":       { "type": "keyword" },
+    "service":     { "type": "keyword" },
+    "message":     { "type": "text" },
+    "client_ip":   { "type": "ip" },
+    "details":     { "type": "object" }
+  }
+}

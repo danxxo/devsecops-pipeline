@@ -1,0 +1,4 @@
+.github/
+pipeline/
+*.env
+*.md

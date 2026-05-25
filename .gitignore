@@ -1,0 +1,7 @@
+*.env
+!.env.example
+pipeline/_reports/*
+!pipeline/_reports/.gitkeep
+pipeline/_baseline/
+*.pdf
+__pycache__

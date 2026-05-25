@@ -1,0 +1,75 @@
+openapi: 3.0.3
+info:
+  title: log-api (DevSecOps DAST target)
+  version: devsecops-local
+  description: >
+    Минимальная OpenAPI-спека эндпоинтов сервиса.
+
+servers:
+  - url: http://api:9100
+
+paths:
+  /_ping:
+    get:
+      summary: Ping
+      responses:
+        '200':
+          description: OK
+
+  /vuln:
+    get:
+      summary: |-
+        Отладочная ручка для проверки DAST-гейта (намеренная command injection).
+      parameters:
+        - name: cmd
+          in: query
+          required: true
+          schema:
+            type: string
+            example: hello
+      responses:
+        '200':
+          description: OK
+
+  /log:
+    get:
+      summary: Получить все логи из OpenSearch
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Принять лог и проиндексировать в OpenSearch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Log'
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+        '500':
+          description: Internal Server Error
+
+components:
+  schemas:
+    Log:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          example: "2026-05-02T19:00:00Z"
+        level:
+          type: string
+          example: "info"
+        service:
+          type: string
+          example: "auth-service"
+        message:
+          type: string
+          example: "user logged in"
+        details:
+          type: object
+          additionalProperties: true
