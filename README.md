@@ -297,3 +297,12 @@ docker run --rm \
 | `python3 pipeline/gate.py` | Прогнать quality-gate по `policy.yml` |
 
 JSON-отчёты складываются в `pipeline/_reports/` (gitignored).
+
+## 10. Запуски по шагам
+1. пулл реквест ветки demo->master
+
+Сработка quality-gate
+![run1_quality_gate](./img/run1_quality_gate.png)
+
+Отчет
+![run1_report](./img/run1_report.png)
