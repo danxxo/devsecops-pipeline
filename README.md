@@ -319,3 +319,15 @@ CKV_DOCKER_7 пропал из сканов Checkov
 Создание baseline для дальнейшего игнорирования гейтом старых сработок. То есть сработки запушенные в master считаются фолзой, которую намеренно игнорируем в дальнейшей разработке
 
 ![run3_baseline](./static/img/run3_baseline.png)
+
+4. коммит после установившегося baseline-a
+
+Был открыт новый pr new-feature->master с добавлением нового поля в модель `LogEntry`
+
+Так как пуш в мастер установил baseline в ш. 3, то старые сработки, не решенные в new-feature попали в игнор при новом pull request и quality gate успешно прошел. Тем не менее в отчете старые ошибки все равно показаны
+
+Отчет
+![run4_report](./static/img/run4_report.png)
+
+Гейт
+![run4_baseline](./static/img/run4_baseline.png)
