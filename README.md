@@ -313,3 +313,9 @@ JSON-отчёты складываются в `pipeline/_reports/` (gitignored).
 
 CKV_DOCKER_7 пропал из сканов Checkov
 ![run2_report](./static/img/run2_report.png)
+
+3. Принятие открытого pr demo->master
+
+Создание baseline для дальнейшего игнорирования гейтом старых сработок. То есть сработки запушенные в master считаются фолзой, которую намеренно игнорируем в дальнейшей разработке
+
+![run3_baseline](./static/img/run3_baseline.png)
